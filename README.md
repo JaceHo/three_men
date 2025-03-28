@@ -125,3 +125,16 @@ Example of pieces on the board:
 ## 棋子 (Game Pieces)
 
 Players use X and O as their pieces:
+
+```
+
+## Training Statistics
+
+During training, the following statistics are tracked and displayed:
+
+### Self-play Phase
+- Win rates for both players (X and O)
+- Draw rate
+- Average game length
+- Progress updates every 5% of games
+- Time tracking and estimated completion

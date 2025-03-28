@@ -298,10 +298,10 @@ class ThreeMensMorris:
             # Decrement pieces to place
             next_state[4] = np.full((5, 5), player_pieces_to_place - 1)
 
-            # Check for mill formation
+            # Check for mill formation - only check once and store the result
             mill_formed = self._get_new_mills(old_player_pos, player_pos, to_pos)
 
-            # Handle mill formation (capture opponent's piece)
+            # Handle mill formation (capture opponent's piece) - only execute once
             if mill_formed and opponent_pos:
                 # We choose a piece that's not part of a mill if possible
                 capturable_pieces = []
@@ -320,8 +320,8 @@ class ThreeMensMorris:
                         blocked_positions[i, j] = 1
                         next_state[2] = blocked_positions
 
-                    # Only print mill formation messages when not in training
-                    if not hasattr(self, 'is_training'):
+                    # Only print mill formation message when not in training
+                    if not hasattr(self, 'is_training') or not self.is_training:
                         print(
                             f"{Fore.MAGENTA}Mill formed! {Fore.RED}X{Fore.MAGENTA} captured "
                             f"{Fore.BLUE}O{Fore.MAGENTA} at position {capture_pos}{Style.RESET_ALL}"
@@ -853,7 +853,8 @@ Type '{Fore.CYAN}h{Style.RESET_ALL}' at any input prompt to see the board positi
         print(f"{Fore.WHITE}1. Play against AlphaZero")
         print("2. Watch AlphaZero play against itself")
         print("3. Watch trained best model play")
-        print(f"4. Exit{Style.RESET_ALL}")
+        print("4. Retrain model")
+        print(f"5. Exit{Style.RESET_ALL}")
         choice = input(f"{Fore.CYAN}> {Style.RESET_ALL}")
 
         if choice == "1":
@@ -935,8 +936,68 @@ Type '{Fore.CYAN}h{Style.RESET_ALL}' at any input prompt to see the board positi
                 print(f"{Fore.RED}Error: {str(e)}{Style.RESET_ALL}")
 
         elif choice == "4":
+            print(f"\n{Fore.CYAN}Retraining AlphaZero...{Style.RESET_ALL}")
+            print(f"{Fore.YELLOW}Enter training parameters (or press Enter for defaults):{Style.RESET_ALL}")
+            
+            try:
+                # Get custom training parameters
+                iterations = input(f"Number of iterations (default: 5): ")
+                iterations = int(iterations) if iterations else 5
+                
+                self_play_games = input(f"Self-play games per iteration (default: 20): ")
+                self_play_games = int(self_play_games) if self_play_games else 20
+                
+                epochs = input(f"Training epochs per iteration (default: 5): ")
+                epochs = int(epochs) if epochs else 5
+                
+                # Update AlphaZero parameters
+                alphazero.num_iterations = iterations
+                alphazero.num_self_play_games = self_play_games
+                alphazero.num_epochs = epochs
+                
+                # Set training flags
+                game.debug_mode = True
+                game.is_training = True
+                
+                print(f"\n{Fore.YELLOW}Starting training with parameters:{Style.RESET_ALL}")
+                print(f"├─ Iterations: {iterations}")
+                print(f"├─ Self-play games per iteration: {self_play_games}")
+                print(f"└─ Training epochs per iteration: {epochs}")
+                
+                try:
+                    # Perform training
+                    alphazero.train()
+                    
+                    # Save the model with timestamp
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    model_path = f"threemenmorris_retrained_{timestamp}.pt"
+                    alphazero._save_checkpoint(model_path)
+                    
+                    print(f"\n{Fore.GREEN}Training complete!{Style.RESET_ALL}")
+                    print(f"├─ Model saved as: {model_path}")
+                    print(f"└─ You can now use this model for playing or watching games")
+                    
+                    # Ask if user wants to use the new model
+                    use_new = input(f"\n{Fore.CYAN}Use this model for future games? (y/n): {Style.RESET_ALL}")
+                    if use_new.lower() == 'y':
+                        alphazero.load_checkpoint(model_path)
+                        print(f"{Fore.GREEN}Now using newly trained model{Style.RESET_ALL}")
+                
+                except Exception as e:
+                    print(f"{Fore.RED}Training failed: {str(e)}{Style.RESET_ALL}")
+                
+                finally:
+                    # Reset training flags
+                    game.debug_mode = False
+                    if hasattr(game, 'is_training'):
+                        delattr(game, 'is_training')
+            
+            except ValueError:
+                print(f"{Fore.RED}Invalid input! Please enter valid numbers.{Style.RESET_ALL}")
+
+        elif choice == "5":
             print(f"{Fore.GREEN}Thanks for playing!{Style.RESET_ALL}")
-            break  # Now this break is inside the while loop
+            break
         else:
             print(f"{Fore.YELLOW}Invalid choice. Please try again.{Style.RESET_ALL}")
 
